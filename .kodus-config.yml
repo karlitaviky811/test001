@@ -7,6 +7,11 @@ review:
   auto_approval: false
   model: default
   
+  # Target branches to review (solves Branch Mismatch)
+  baseBranches:
+    - "main"
+    - "master"
+
   # Scan and sync repository instructions
   repoInstructionsEnabled: true
   
