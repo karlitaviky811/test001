@@ -1,6 +1,6 @@
-# Kodus Java Backend Demo: Core de Pagos con Arquitectura Hexagonal
+# Kodus & GitLab Duo Java Backend Demo: Core de Pagos con Arquitectura Hexagonal
 
-Backend de demostración en **Java 21** y **Spring Boot 3.3.5** diseñado específicamente para ilustrar cómo **Kodus (Self-Hosted AI Code Review)** detecta violaciones de reglas de negocio, aprende de las decisiones del equipo y guía la eliminación progresiva de deuda técnica.
+Backend de demostración en **Java 21** y **Spring Boot 3.3.5** diseñado específicamente para ilustrar cómo herramientas de AI Code Review como **Kodus (Self-Hosted)** y **GitLab Duo Code Review** detectan violaciones de reglas de negocio, aprenden de las decisiones del equipo y guían la eliminación progresiva de deuda técnica.
 
 ---
 
@@ -30,34 +30,29 @@ src/main/java/com/kodus/demo/
 
 ---
 
-## 2. Integración con Kodus (Policy as Code)
+## 2. Configuración Multi-Motor: Kodus y GitLab Duo
 
-Kodus monitorea y evalúa cada Pull Request mediante reglas declarativas en `.kody/rules/` y directrices de repositorio en `CLAUDE.md`:
+Las mismas 4 reglas arquitectónicas y de negocio están configuradas tanto para Kodus como para GitLab Duo Code Review:
 
-| Regla | Ubicación | Severidad | Propósito |
-| :--- | :--- | :--- | :--- |
-| **Aislamiento de Dominio** | `.kody/rules/domain-framework-isolation.md` | `CRITICAL` | Detecta fugas de frameworks (`@Entity`, `@Service`) dentro de `domain`. |
-| **Precisión Financiera** | `.kody/rules/financial-precision-money.md` | `HIGH` | Bloquea el uso de `float`/`double` en cálculos y variables de dinero. |
-| **Anti-Deuda: No Entities en Controllers** | `.kody/rules/no-orm-entities-in-controllers.md` | `HIGH` | Evita exponer tablas JPA en endpoints REST para evitar acoplamiento. |
-| **Validación de Invariantes de Negocio** | `.kody/rules/business-invariant-limits.md` | `HIGH` | Asegura que las validaciones de saldo y límite diario residan en la entidad. |
+| Regla | Archivo Kodus | Archivo GitLab Duo | Severidad | Propósito |
+| :--- | :--- | :--- | :--- | :--- |
+| **Aislamiento de Dominio** | `.kody/rules/domain-framework-isolation.md` | `.gitlab/duo/mr-review-instructions.yaml` | `CRITICAL` | Detecta si alguien importa `@Entity` o Spring en `domain`. |
+| **Precisión Financiera** | `.kody/rules/financial-precision-money.md` | `.gitlab/duo/mr-review-instructions.yaml` | `HIGH` | Bloquea `float`/`double` para dinero, exigiendo `Money`. |
+| **Anti-Deuda: No Entities en Controllers** | `.kody/rules/no-orm-entities-in-controllers.md` | `.gitlab/duo/mr-review-instructions.yaml` | `HIGH` | Evita exponer tablas JPA en endpoints REST. |
+| **Invariantes de Negocio** | `.kody/rules/business-invariant-limits.md` | `.gitlab/duo/mr-review-instructions.yaml` | `HIGH` | Exige que validaciones y estados vivan en `PaymentOrder`. |
 
 ---
 
-## 3. Comandos Útiles del CLI de Kodus
+## 3. Guías de Demostración y Prueba
+
+* **Demostración con Kodus**: Consulta [DEMO_WALKTHROUGH.md](file:///C:/Users/ktovar/kodus-java-backend-demo/DEMO_WALKTHROUGH.md) para ver los escenarios de revisión local, aprendizaje (Memories) y reducción de deuda técnica.
+* **Prueba con GitLab Duo**: Consulta [GITLAB_DUO_TESTING.md](file:///C:/Users/ktovar/kodus-java-backend-demo/GITLAB_DUO_TESTING.md) para disparar revisiones en Merge Requests con `/assign_reviewer @GitLabDuo`.
+
+---
+
+## 4. Ejecución de Pruebas Unitarias
 
 ```bash
-# 1. Ver las reglas activas configuradas
-kodus rules view --repo-id global
-
-# 2. Ejecutar revisión local sobre los cambios pendientes
-kodus review
-
-# 3. Validar cambios locales frente a reglas de negocio y criterios de aceptación
-kodus pr business-validation
+mvn clean test
 ```
-
----
-
-## 4. Guía Rápida de Ejecución de la Demo
-
-Para ver en acción los escenarios de detección de deuda técnica y aprendizaje de Kodus, consulta la guía paso a paso en [DEMO_WALKTHROUGH.md](file:///C:/Users/ktovar/kodus-java-backend-demo/DEMO_WALKTHROUGH.md).
+*Total de pruebas*: 12 ejecutadas, 0 errores, 0 fallos (cobertura sobre lógica de redondeo, invariantes y puertos).

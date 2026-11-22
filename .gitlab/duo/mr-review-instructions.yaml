@@ -1,0 +1,47 @@
+instructions:
+  - name: "Aislamiento de Dominio - Arquitectura Hexagonal"
+    fileFilters:
+      - "src/main/java/**/domain/**"
+    instructions: |
+      Garantiza que el núcleo del negocio (`domain`) permanezca completamente aislado de frameworks externos, tecnologías de persistencia y protocolos de transporte.
+      - PROHIBIDO: Cualquier importación de frameworks:
+        * `org.springframework.*` (ej. `@Service`, `@Component`, `@Autowired`, `@Transactional`)
+        * `jakarta.persistence.*` o `javax.persistence.*` (ej. `@Entity`, `@Table`, `@Id`)
+        * `jakarta.servlet.*` o `org.springframework.web.*`
+        * Clientes de base de datos, Kafka o HTTP.
+      Si detectas alguna de estas dependencias dentro de `domain`, márcalo como una violación crítica de arquitectura y recomienda mover la lógica al adaptador correspondiente (`adapter.in`, `adapter.out`) o a la capa de aplicación (`application.usecase`).
+
+  - name: "Precisión Financiera - Prohibición de float y double"
+    fileFilters:
+      - "src/main/java/**"
+      - "!src/test/**"
+    instructions: |
+      Evita errores de redondeo de punto flotante binario (IEEE 754) en operaciones financieras y de dinero.
+      - PROHIBIDO: El uso de tipos primitivos `float`, `double` o sus wrappers `Float`, `Double` para cálculos o almacenamiento de dinero, comisiones o tarifas.
+      - Si encuentras un `double` o `float` representando dinero:
+        * Emite una observación de severidad ALTA.
+        * Cita el riesgo: "Los tipos de punto flotante binario introducen inexactitudes críticas en cálculos monetarios (ej. 0.1 + 0.2 != 0.3)".
+        * Sugiere reemplazarlo por el Value Object `com.kodus.demo.domain.model.Money` o `java.math.BigDecimal` con `RoundingMode.HALF_EVEN` y escala explícita.
+
+  - name: "Prevención de Deuda Técnica - Prohibición de Entidades JPA en Controladores"
+    fileFilters:
+      - "src/main/java/**/adapter/in/web/**"
+    instructions: |
+      Evita la fuga del modelo de base de datos hacia la API pública (acoplamiento y fallos de seguridad como Mass Assignment o LazyInitializationException).
+      - PROHIBIDO:
+        * Métodos de endpoint (`@GetMapping`, `@PostMapping`, etc.) que retornen directamente clases marcadas con `@Entity`.
+        * Métodos que acepten entidades `@Entity` como `@RequestBody`.
+      - Si detectas una entidad JPA expuesta en el controlador:
+        * Emite una advertencia de Deuda Técnica por Acoplamiento.
+        * Solicita el uso de Data Transfer Objects (DTOs) específicos (ej. `PaymentRequestDto`, `PaymentResponseDto`) con mapeo en los límites de la capa web.
+
+  - name: "Regla de Negocio - Validación de Límites y Transiciones de Estado"
+    fileFilters:
+      - "src/main/java/**/domain/**"
+      - "src/main/java/**/application/**"
+      - "src/main/java/**/adapter/in/web/**"
+    instructions: |
+      Asegura que las reglas de negocio e invariantes (límites diarios, estados de pago válidos) residan exclusivamente en el Dominio y no se dispersen en controladores o servicios anémicos.
+      - Comprueba que las mutaciones de estado de `PaymentOrder` (como `authorize()`, `settle()`, `reject()`) se realicen a través de métodos de negocio dentro de la entidad y no con setters abiertos.
+      - Verifica que las transiciones de estado invaliden estados terminales (ej. un pago `REJECTED` no puede pasar a `SETTLED`).
+      - Si detectas lógica condicional de negocio (`if (amount > limit)` o cálculo de límites) colocada en un `@RestController`, marca el hallazgo indicando que viola la cohesión de dominio y debe moverse al agregado `PaymentOrder`.
