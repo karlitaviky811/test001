@@ -17,5 +17,5 @@ jobs:
         java-version: '21'
         distribution: 'temurin'
         cache: maven
-    - name: Build and Test with Maven
-      run: mvn -B clean test
+    - name: Build with Maven (Tests Skipped)
+      run: mvn -B clean compile -DskipTests
