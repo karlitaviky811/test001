@@ -1,0 +1,20 @@
+# Kodus Code Review Configuration
+version: 1
+
+review:
+  # Review depth and behaviors
+  summary: true
+  auto_approval: false
+  model: default
+  
+  # Scan and sync repository instructions
+  repoInstructionsEnabled: true
+  
+  # Path filters
+  ignore:
+    - "target/**"
+    - "**/*.md"
+    - "pom.xml"
+
+rules:
+  directory: ".kody/rules"
