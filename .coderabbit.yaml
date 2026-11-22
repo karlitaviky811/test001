@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+# Idioma de revisión en español obligatorio
+language: "es"
+
+reviews:
+  profile: "assertive"
+  
+  # Habilitar auto-review para main y master (soluciona el error 'Review skipped')
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "main"
+      - "master"
+
+  # Reglas de negocio y arquitectura hexagonal para CodeRabbit
+  path_instructions:
+    - path: "src/main/java/**/domain/**"
+      instructions: |
+        Aislamiento de Dominio (Arquitectura Hexagonal):
+        - PROHIBIDO: Importar frameworks o persistencia (@Entity, @Table, @Id de jakarta.persistence, o @Component, @Service de Spring).
+        - El dominio debe ser Java puro. Si detectas anotaciones de persistencia en domain, márcalo como violación crítica.
+
+    - path: "src/main/java/**"
+      instructions: |
+        Precisión Financiera y Buenas Prácticas:
+        - PROHIBIDO: Usar primitivos float o double para dinero, comisiones o tasas. Exigir Money o BigDecimal con RoundingMode.HALF_EVEN.
+        - PROHIBIDO: Field injection con @Autowired en atributos privados. Exigir inyección por constructor.
+        - PROHIBIDO: Silenciar excepciones con catch(Exception) o catch(Throwable) retornando null o falso 200 OK.
+        - PROHIBIDO: Imprimir secretos, tokens o datos de tarjeta/CVV en logs o System.out.
+
+    - path: "src/main/java/**/adapter/in/web/**"
+      instructions: |
+        Seguridad y Fronteras Web:
+        - PROHIBIDO: Recibir o retornar clases @Entity de JPA en controladores REST. Exigir siempre DTOs.
+        - PROHIBIDO: Concatenar sentencias SQL o inyectar JdbcTemplate en controladores (@RestController). Esto es riesgo crítico de SQL Injection.
+        - PROHIBIDO: Colocar lógica de negocio o mutaciones de estado en el controller. Las invariantes deben vivir en el agregado de dominio.
