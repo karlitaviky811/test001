@@ -1,0 +1,13 @@
+# Codacy Configuration File
+---
+engines:
+  pmd:
+    enabled: true
+  checkstyle:
+    enabled: true
+  spotbugs:
+    enabled: true
+
+exclude_paths:
+  - "target/**"
+  - "src/test/**"

@@ -146,4 +146,33 @@ public class PaymentOrder {
     public Instant getUpdatedAt() {
         return updatedAt;
     }
+
+    /**
+     * Caso 7: Violación Flagrante de Arquitectura Hexagonal y DDD.
+     * 
+     * ❌ VIOLACIÓN ARQUITECTÓNICA CRÍTICA:
+     * 1. Llamada I/O de red directa usando java.net.http.HttpClient dentro del agregado de dominio puro.
+     * 2. Acceso a variables de entorno del sistema operativo (System.getenv).
+     * 
+     * En Arquitectura Hexagonal, el Dominio DEBE ser Java puro sin dependencias de I/O,
+     * red, ni protocolos externos. Toda comunicación externa debe abstraerse mediante
+     * un Puerto de Salida (Output Port).
+     */
+    public void notifyPartnerDirectlyViaHttp() {
+        try {
+            String webhookUrl = System.getenv("PARTNER_WEBHOOK_URL");
+            if (webhookUrl == null) {
+                webhookUrl = "https://partner-gateway.internal.net/api/v1/notify";
+            }
+            java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(webhookUrl))
+                    .header("Content-Type", "application/json")
+                    .POST(java.net.http.HttpRequest.BodyPublishers.ofString("{\"paymentId\":\"" + this.id.value() + "\"}"))
+                    .build();
+            client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) {
+            // Silenciamiento de excepción de I/O en dominio
+        }
+    }
 }

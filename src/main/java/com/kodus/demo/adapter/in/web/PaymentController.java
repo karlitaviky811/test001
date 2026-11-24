@@ -2,6 +2,8 @@ package com.kodus.demo.adapter.in.web;
 
 import com.kodus.demo.adapter.in.web.dto.PaymentRequestDto;
 import com.kodus.demo.adapter.in.web.dto.PaymentResponseDto;
+import com.kodus.demo.adapter.out.cache.TransactionVelocityCacheAdapter;
+import com.kodus.demo.adapter.out.gateway.ExternalCardGatewayAdapter;
 import com.kodus.demo.adapter.out.persistence.PaymentJpaEntity;
 import com.kodus.demo.adapter.out.persistence.SpringDataPaymentRepository;
 import com.kodus.demo.application.port.in.ProcessPaymentCommand;
@@ -18,25 +20,34 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
 /**
  * Adaptador Web Inbound.
+ * Conecta los casos de prueba en el grafo de llamadas activo de la aplicación.
  */
 @RestController
 @RequestMapping("/api/v1/payments")
 public class PaymentController {
 
     private final ProcessPaymentUseCase processPaymentUseCase;
+    private final TransactionVelocityCacheAdapter velocityCacheAdapter;
+    private final ExternalCardGatewayAdapter externalCardGatewayAdapter;
 
-    // ❌ VIOLACIÓN REGLA 5 (Field Injection): Uso de @Autowired en atributo privado
+    // ❌ Anti-patrón de inyección de campo
     @Autowired
     private SpringDataPaymentRepository directPaymentRepository;
 
-    public PaymentController(ProcessPaymentUseCase processPaymentUseCase) {
+    public PaymentController(
+            ProcessPaymentUseCase processPaymentUseCase,
+            TransactionVelocityCacheAdapter velocityCacheAdapter,
+            ExternalCardGatewayAdapter externalCardGatewayAdapter) {
         this.processPaymentUseCase = processPaymentUseCase;
+        this.velocityCacheAdapter = velocityCacheAdapter;
+        this.externalCardGatewayAdapter = externalCardGatewayAdapter;
     }
 
     @PostMapping
@@ -60,41 +71,28 @@ public class PaymentController {
     }
 
     /**
-     * ❌ ENDPOINT CON DEUDA TÉCNICA ACUMULADA:
-     * Contiene múltiples violaciones arquitectónicas y de negocio simultáneas:
-     * 1. Recibe y retorna @Entity de JPA en el Controller (Regla no-orm-entities-in-controllers).
-     * 2. Usa tipo primitivo double para cálculos financieros (Regla financial-precision-money).
-     * 3. Lógica de negocio e invariantes de estado dentro del Controller (Regla business-invariant-limits).
-     * 4. Silenciamiento de excepciones con catch(Exception) y printStackTrace (Regla proper-exception-handling).
-     * 5. Vuelco de credenciales/PII en logs y omitir el puerto de auditoría (Regla financial-security-pii-audit).
+     * ❌ CASO 10: Fuga de Entidad JPA en API y SQL Injection por Concatenación Directa
+     * 
+     * Anti-patrones introducidos deliberadamente:
+     * 1. Recibe y retorna @Entity de JPA en el Controller (acoplamiento y fuga de modelo).
+     * 2. Concatena parámetros de petición en sentencias SQL nativas (SQL Injection).
+     * 3. Invoca activamente los componentes de Casos 3, 4, 8 y 9 en la ruta transaccional caliente.
      */
-    @PostMapping("/quick-transfer-accumulated-debt")
-    public PaymentJpaEntity transferConDeudaAcumulada(
-            @RequestHeader(value = "X-Auth-Token", required = false) String token,
+    @PostMapping("/legacy-direct-sql-transfer")
+    public PaymentJpaEntity transferDirectSql(
+            @RequestParam("targetAccount") String targetAccount,
             @RequestBody PaymentJpaEntity entity) {
 
-        // ❌ VIOLACIÓN REGLA 7: Fuga de PII y secretos en System.out sin máscara
-        System.out.println("AUDIT INSEGURO - TOKEN SECRETO: " + token + " CUENTA DESTINO: " + entity.getTargetAccountId());
+        // Conexión activa con Casos 8 y 9: cobro con tarjeta que registra PAN sin máscara y bucle infinito
+        externalCardGatewayAdapter.chargeExternalCard("4111222233334444", "123", entity.getAmount().doubleValue());
 
-        try {
-            // ❌ VIOLACIÓN REGLA 2: Uso de double para comisiones monetarias
-            double fee = entity.getAmount().doubleValue() * 0.035;
+        // Conexión activa con Casos 3 y 4: registra velocidad en caché estática mutable
+        velocityCacheAdapter.recordTransaction(entity.getTargetAccountId());
 
-            // ❌ VIOLACIÓN REGLA 4: Mutación directa de estado e invariantes en la capa Web
-            if (fee > 75.0) {
-                entity.setStatus("REJECTED");
-                entity.setRejectionReason("Comisión excesiva para transferencia rápida");
-            } else {
-                entity.setStatus("SETTLED");
-            }
+        // ❌ CASO 10 (Cont): Inyección SQL crítica - Concatenación directa de cadenas en SQL nativo
+        String rawQuery = "SELECT * FROM payments WHERE target_account_id = '" + targetAccount + "'";
+        System.out.println("Ejecutando SQL inseguro: " + rawQuery);
 
-            // Guardado directo saltándose el caso de uso y el puerto de auditoría
-            return directPaymentRepository.save(entity);
-
-        } catch (Exception ex) {
-            // ❌ VIOLACIÓN REGLA 6: Silenciamiento de excepciones, printStackTrace y retorno de null
-            ex.printStackTrace();
-            return null;
-        }
+        return directPaymentRepository.save(entity);
     }
 }
