@@ -6,7 +6,6 @@ language: "es"
 reviews:
   profile: "assertive"
   
-  # Habilitar auto-review para main y master (soluciona el error 'Review skipped')
   auto_review:
     enabled: true
     drafts: false
@@ -14,38 +13,39 @@ reviews:
       - "main"
       - "master"
 
-  # Reglas de negocio, arquitectura hexagonal, seguridad y resiliencia para CodeRabbit
+  # 10 Reglas de negocio, arquitectura hexagonal, seguridad, concurrencia y resiliencia
   path_instructions:
     - path: "src/main/java/**/domain/**"
       instructions: |
-        Aislamiento de Dominio (Arquitectura Hexagonal Pura):
-        - PROHIBIDO: Importar frameworks o persistencia (@Entity, @Table, @Id de jakarta.persistence, o @Component, @Service de Spring).
-        - PROHIBIDO: Realizar llamadas de red o I/O directo dentro de clases de dominio (ej. java.net.http.HttpClient, HttpURLConnection, sockets).
+        Regla 7 (Arquitectura Hexagonal y DDD Puro):
+        - PROHIBIDO: Instanciar clientes de red o I/O directo dentro de clases de dominio (ej. java.net.http.HttpClient, HttpURLConnection, sockets).
         - PROHIBIDO: Leer variables de entorno del sistema operativo (System.getenv, System.getProperty) en entidades o Value Objects.
+        - PROHIBIDO: Importar frameworks o persistencia (@Entity, @Table, @Id de jakarta.persistence, o @Component, @Service de Spring).
         - El dominio debe ser Java puro. Toda comunicación externa debe abstraerse mediante Puertos de Salida (Output Ports).
-
-    - path: "src/main/java/**"
-      instructions: |
-        Precisión Financiera, Seguridad y Concurrencia:
-        - PROHIBIDO: Usar primitivos float o double para dinero, comisiones o tasas. Exigir Money o BigDecimal con RoundingMode.HALF_EVEN.
-        - PROHIBIDO: Field injection con @Autowired en atributos privados. Exigir inyección por constructor.
-        - PROHIBIDO: Silenciar excepciones con catch(Exception) o catch(Throwable) retornando null o falso 200 OK.
-        - PROHIBIDO: Imprimir secretos, tokens o datos de tarjeta/CVV en logs o System.out.
-        - PROHIBIDO: Colecciones estáticas mutables (ej. private static final Map<...> = new HashMap<>()) en Beans Singleton de Spring por riesgo de Race Conditions y Memory Leaks.
-        - PROHIBIDO: Compartir instancias de SimpleDateFormat entre hilos (no es thread-safe). Exigir DateTimeFormatter.
-        - PROHIBIDO: Claves de API privadas de producción hardcodeadas (ej. sk_live_..., whsec_...). Exigir configuración externa segura.
-        - PROHIBIDO: Bucles infinitos de reintento while(true) sin retroceso exponencial (backoff), sin timeout y sin límite máximo de intentos (riesgo crítico de Thread Pool Starvation).
-
-    - path: "src/main/java/**/adapter/in/web/**"
-      instructions: |
-        Seguridad Web y Fronteras de Entrada:
-        - PROHIBIDO: Recibir o retornar clases @Entity de JPA en controladores REST. Exigir siempre DTOs.
-        - PROHIBIDO: Concatenar sentencias SQL o inyectar JdbcTemplate en controladores (@RestController). Esto es riesgo crítico de SQL Injection.
-        - PROHIBIDO: Colocar lógica de negocio o mutaciones de estado en el controller. Las invariantes deben vivir en el agregado de dominio.
-        - PROHIBIDO: Bypasses en validación criptográfica de webhooks (ej. retornar true si la firma es nula o vacía) o usar .equals() directo susceptible a Timing Attacks en lugar de MessageDigest.isEqual().
 
     - path: "src/main/java/**/application/**"
       instructions: |
-        Invariantes de Negocio en Aplicación y Reembolsos:
-        - PROHIBIDO: Permitir montos de reembolso negativos o menores/iguales a cero. Esto constituye una vulnerabilidad crítica de inyección de saldo fraudulento.
-        - PROHIBIDO: Arbitraje de divisas sin conversión oficial (forzar tasa 1:1 entre EUR y USD). Exigir validación estricta de divisas.
+        Reglas 1 y 2 (Invariantes de Reembolso y Divisas):
+        - PROHIBIDO: Permitir montos de reembolso negativos o menores/iguales a cero (inyección fraudulenta de saldo).
+        - PROHIBIDO: Procesar reembolsos que superen el importe total original de la transacción.
+        - PROHIBIDO: Arbitraje de divisas sin conversión oficial (forzar tasa 1:1 entre EUR y USD). Exigir validación estricta del Value Object Money.
+
+    - path: "src/main/java/**/adapter/out/cache/**"
+      instructions: |
+        Reglas 3 y 4 (Concurrencia en Spring y Thread-Safety):
+        - PROHIBIDO: Colecciones estáticas mutables (ej. private static final Map<...> = new HashMap<>()) en Beans Singleton de Spring por riesgo de Race Conditions y Memory Leaks.
+        - PROHIBIDO: Compartir instancias de SimpleDateFormat entre hilos (no es thread-safe). Exigir DateTimeFormatter.
+
+    - path: "src/main/java/**/adapter/out/gateway/**"
+      instructions: |
+        Reglas 8 y 9 (Resiliencia y PCI-DSS):
+        - PROHIBIDO: Bucles infinitos de reintento while(true) o while(!success) sin retroceso exponencial (backoff), sin timeout y sin límite máximo de intentos (riesgo crítico de Thread Pool Starvation).
+        - PROHIBIDO: Imprimir números de tarjeta de crédito completos (PAN de 16 dígitos) o CVV en los logs de aplicación sin enmascaramiento adecuado.
+
+    - path: "src/main/java/**/adapter/in/web/**"
+      instructions: |
+        Reglas 5, 6 y 10 (Seguridad Web, Webhooks y Persistencia):
+        - PROHIBIDO: Claves de API privadas de producción hardcodeadas (ej. sec_live_..., whsec_...). Exigir configuración externa segura.
+        - PROHIBIDO: Bypasses en validación criptográfica de webhooks (ej. retornar true si la firma es nula o vacía) o usar .equals() directo susceptible a Timing Attacks en lugar de MessageDigest.isEqual().
+        - PROHIBIDO: Recibir o retornar clases @Entity de JPA en controladores REST. Exigir siempre DTOs.
+        - PROHIBIDO: Concatenar sentencias SQL o inyectar JdbcTemplate en controladores (@RestController) con riesgo crítico de SQL Injection.

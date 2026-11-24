@@ -1,16 +1,15 @@
 ---
-title: "Resiliencia y Estabilidad - Prohibición de Bucles Infinitos de Reintentos sin Backoff"
+title: "Regla 8: Resiliencia - Prohibición de Bucles Infinitos de Reintento sin Backoff (Thread Starvation)"
 scope: "file"
 path: ["src/main/java/**/adapter/out/**", "src/main/java/**/application/**"]
-severity: "high"
+severity: "critical"
 languages: ["java"]
 enabled: true
 ---
 
 ## Objetivo
-Prevenir el agotamiento del pool de hilos (Thread Pool Starvation), saturación de CPU y caídas en cascada (Cascading Failure) ante indisponibilidad de proveedores externos.
+Prevenir la saturación de CPU, el agotamiento del pool de hilos de Tomcat/Undertow y caídas en cascada ante indisponibilidad de terceros.
 
 ## Instrucciones para Kodus
-1. **Prohibición de Bucles Infinitos de Reintento**: Prohíbe bucles `while (true)` o `while (!success)` sin un límite máximo acotado de reintentos (`maxAttempts`).
-2. **Retroceso Exponencial (Exponential Backoff)**: Todo mecanismo de reintento ante fallos de red (`SocketTimeoutException`, `ConnectException`) debe incluir retroceso progresivo (backoff con jitter) y un timeout global.
-3. **Circuit Breaker**: Recomienda el uso de patrones de tolerancia a fallos como Circuit Breaker (Resilience4j / Spring Retry) en lugar de reintentos bloqueantes síncronos continuos.
+1. **Prohibición de Bucle Infinito**: Prohíbe bucles `while (true)` o `while (!success)` sin límite superior de reintentos (`maxAttempts`).
+2. **Retroceso y Timeout Obligatorios**: Todo reintento ante fallos de red debe incorporar retroceso exponencial (backoff), jitter, timeout explícito o patrones de Circuit Breaker.
